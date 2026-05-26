@@ -117,7 +117,7 @@ executing @ file:///home/task_175706097909872/conda-bld/executing_1757061232604/
 fastjsonschema @ file:///home/task_176371855820385/conda-bld/python-fastjsonschema_1763718584131/work
 filelock @ file:///home/task_176241980242961/conda-bld/filelock_1762419845659/work
 flake8 @ file:///work/perseverance-python-buildout/croot/flake8_1728399191681/work
-Flask @ file:///croot/flask_1756453126864/work
+Flask==3.0.2
 fonttools @ file:///home/task_175975446549307/conda-bld/fonttools_1759754871956/work
 frozendict @ file:///home/task_176175049677026/conda-bld/frozendict_1761750665451/work
 frozenlist @ file:///home/task_176106151669066/conda-bld/frozenlist_1761062012650/work
@@ -129,7 +129,7 @@ gmpy2 @ file:///croot/gmpy2_1738085463648/work
 google-auth==2.53.0
 google-genai==2.6.0
 greenlet @ file:///home/task_175740546782543/conda-bld/greenlet_1757405532900/work
-gunicorn==26.0.0
+gunicorn==21.2.0
 h11 @ file:///home/task_176193111687894/conda-bld/h11_1761931259172/work
 h5py @ file:///home/task_176399702944756/conda-bld/h5py_1763997333701/work
 HeapDict @ file:///Users/ktietz/demo/mc3/conda-bld/heapdict_1630598515714/work
@@ -509,7 +509,7 @@ wcwidth @ file:///croot/wcwidth_1750352883074/work
 webencodings @ file:///work/perseverance-python-buildout/croot/webencodings_1728385731103/work
 websocket-client @ file:///work/perseverance-python-buildout/croot/websocket-client_1728386934860/work
 websockets==16.0
-Werkzeug @ file:///croot/werkzeug_1737448706492/work
+Werkzeug==3.0.1
 whatthepatch @ file:///home/task_175827642132885/conda-bld/whatthepatch_1758276649866/work
 wheel==0.45.1
 widgetsnbextension @ file:///home/task_176155666323813/conda-bld/widgetsnbextension_1761556739092/work
