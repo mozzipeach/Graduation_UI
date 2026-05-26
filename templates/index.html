@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROS2 Robot Control UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 터치 기기에서 당겨서 새로고침(Pull-to-refresh) 등 기본 스와이프 동작 방지 */
+        body {
+            touch-action: none;
+            overscroll-behavior: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* 스크롤바 숨김 처리 */
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body id="app-body" class="h-screen w-screen bg-gray-100 flex flex-col overflow-hidden text-gray-800 font-sans transition-colors duration-300">
+
+    <!-- Main Workspace (Sidebar + Content) -->
+    <div class="flex-1 flex overflow-hidden min-h-0">
+        
+        <!-- Left Sidebar (약 15% 너비) -->
+        <aside class="w-2/12 min-w-[200px] bg-emerald-900 text-white flex flex-col justify-between shrink-0 shadow-xl z-20">
+            <!-- Logo & Menu -->
+            <div>
+                <div class="h-20 flex items-center justify-center border-b border-emerald-800 bg-emerald-950">
+                    <h1 class="text-xl font-extrabold tracking-wider text-emerald-400">AGRI-ROBOT</h1>
+                </div>
+                <nav class="p-4 flex flex-col gap-2">
+                    <div class="px-4 py-3 bg-emerald-800 rounded-lg shadow-inner font-bold border-l-4 border-emerald-400">대시보드</div>
+                    <div class="px-4 py-3 text-emerald-200/60 font-semibold">환경 모니터링</div>
+                    <div class="px-4 py-3 text-emerald-200/60 font-semibold">경로 설정</div>
+                    <div class="px-4 py-3 text-emerald-200/60 font-semibold">시스템 로그</div>
+                </nav>
+            </div>
+            
+            <!-- Weather Widget (Bottom) -->
+            <div class="p-4 m-4 bg-emerald-950 rounded-xl border border-emerald-800 flex flex-col items-center">
+                <span class="text-emerald-400 font-bold mb-2">현재 날씨</span>
+                <div class="flex gap-4 text-center">
+                    <div>
+                        <p class="text-xs text-emerald-300">온도</p>
+                        <p class="text-lg font-bold" id="val-weather-temp">null</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-emerald-300">풍속</p>
+                        <p class="text-lg font-bold" id="val-weather-wind">null</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Main Content (flex-1) -->
+        <main class="flex-1 flex flex-col p-6 gap-6 min-w-0 min-h-0 overflow-y-auto">
+            
+            <!-- Header -->
+            <header class="flex justify-between items-center shrink-0">
+                <h2 class="text-3xl font-extrabold text-emerald-900">통합 관제 대시보드</h2>
+                <div class="flex items-end gap-3 text-emerald-800">
+                    <span id="val-date" class="text-lg font-semibold">null</span>
+                    <span id="val-time" class="text-3xl font-bold tracking-widest">null</span>
+                </div>
+            </header>
+
+            <!-- KPI Cards (5 Cards) -->
+            <section class="grid grid-cols-5 gap-4 shrink-0">
+                <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-emerald-500 flex flex-col justify-between">
+                    <span class="text-gray-500 text-sm font-bold">온도 (Temp)</span>
+                    <div><span id="val-temp" class="text-3xl font-extrabold text-emerald-600">null</span> <span class="text-sm text-gray-400">°C</span></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-blue-500 flex flex-col justify-between">
+                    <span class="text-gray-500 text-sm font-bold">습도 (Humid)</span>
+                    <div><span id="val-humid" class="text-3xl font-extrabold text-blue-600">null</span> <span class="text-sm text-gray-400">%</span></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-teal-500 flex flex-col justify-between">
+                    <span class="text-gray-500 text-sm font-bold">CO2 농도</span>
+                    <div><span id="val-co2" class="text-3xl font-extrabold text-teal-600">null</span> <span class="text-sm text-gray-400">ppm</span></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-cyan-500 flex flex-col justify-between">
+                    <span class="text-gray-500 text-sm font-bold">O2 농도</span>
+                    <div><span id="val-o2" class="text-3xl font-extrabold text-cyan-600">null</span> <span class="text-sm text-gray-400">%</span></div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm p-5 border-l-4 border-amber-500 flex flex-col justify-between">
+                    <span class="text-gray-500 text-sm font-bold">오늘 총 수확량</span>
+                    <div><span id="val-harvest" class="text-3xl font-extrabold text-amber-600">null</span> <span class="text-sm text-gray-400">kg</span></div>
+                </div>
+            </section>
+
+            <!-- Central Dashboard Grid (2x2) -->
+            <section class="flex-1 grid grid-cols-2 grid-rows-2 gap-6 min-h-0">
+                
+                <!-- (1) Chart -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col min-h-0">
+                    <h3 class="text-emerald-900 font-bold text-lg mb-4">일일 수확량 (Daily Harvest)</h3>
+                    <div class="relative w-full h-full flex-1 min-h-0">
+                        <canvas id="harvestChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- (2) Robot Status -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col justify-center items-center relative overflow-hidden">
+                    <div class="absolute top-0 w-full h-2 bg-emerald-500"></div>
+                    <h3 class="text-gray-400 font-bold text-lg mb-2">현재 로봇 동작 상태</h3>
+                    <div id="val-status" class="text-4xl text-emerald-700 font-extrabold text-center break-words w-full px-4">null</div>
+                </div>
+
+                <!-- (3) Camera -->
+                <div class="bg-black rounded-2xl shadow-inner relative overflow-hidden flex items-center justify-center min-h-0">
+                    <span id="cam-overlay" class="text-gray-400 text-sm absolute z-0 bg-black/50 px-3 py-1 rounded-full">ROS2 Camera : null</span>
+                    <canvas id="cam-stream" class="w-full h-full z-10 hidden object-contain"></canvas>
+                </div>
+
+                <!-- (4) Map (SLAM) -->
+                <div class="bg-gray-900 rounded-2xl shadow-inner relative overflow-hidden flex items-center justify-center min-h-0">
+                    <span class="text-gray-400 text-sm absolute z-0 bg-black/50 px-3 py-1 rounded-full">LVI-SLAM Map : null</span>
+                    <canvas id="map-stream" class="w-full h-full z-10 object-contain"></canvas>
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- Bottom Bar (터치 컨트롤) -->
+    <footer class="h-[15%] min-h-[100px] grid grid-cols-3 gap-6 p-4 bg-white border-t border-gray-200 shadow-[0_-5px_15px_-10px_rgba(0,0,0,0.1)] shrink-0 z-30">
+        <button id="btn-start" class="bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-3xl rounded-2xl shadow-md transition-all flex items-center justify-center">시작 (Start)</button>
+        <button id="btn-stop" class="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-extrabold text-3xl rounded-2xl shadow-md transition-all flex items-center justify-center">정지 (Stop)</button>
+        <button id="btn-power-off" class="bg-gray-800 hover:bg-gray-700 active:bg-gray-900 text-white font-extrabold text-3xl rounded-2xl shadow-md transition-all flex items-center justify-center">전원 종료</button>
+    </footer>
+
+    <!-- Power Off Overlay -->
+    <div id="power-off-overlay" class="fixed inset-0 bg-black z-50 hidden flex-col items-center justify-center">
+        <div class="text-red-600 font-bold text-5xl md:text-6xl mb-6 animate-pulse text-center px-4">SYSTEM SHUTTING DOWN</div>
+        <div class="text-gray-500 text-2xl">안전하게 시스템을 종료하는 중입니다...</div>
+    </div>
+
+    <script>
+        let systemActive = false;
+        let dataInterval = null;
+        let harvestChart = null;
+
+        const appBody = document.getElementById('app-body');
+        const UI = {
+            date: document.getElementById('val-date'),
+            time: document.getElementById('val-time'),
+            temp: document.getElementById('val-temp'),
+            humid: document.getElementById('val-humid'),
+            co2: document.getElementById('val-co2'),
+            o2: document.getElementById('val-o2'),
+            harvest: document.getElementById('val-harvest'),
+            status: document.getElementById('val-status'),
+            camOverlay: document.getElementById('cam-overlay'),
+            camStream: document.getElementById('cam-stream')
+        };
+
+        function initChart() {
+            const ctx = document.getElementById('harvestChart').getContext('2d');
+            harvestChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['null'], 
+                    datasets: [
+                        { label: 'A구역', data: [null], backgroundColor: '#10b981', borderRadius: 6 }, // Emerald
+                        { label: 'B구역', data: [null], backgroundColor: '#14b8a6', borderRadius: 6 }, // Teal
+                        { label: 'Total', data: [null], backgroundColor: '#0f766e', borderRadius: 6 }  // Dark Teal
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // 절대 밖으로 삐져나가지 않도록 설정
+                    scales: {
+                        x: { ticks: { color: '#6b7280', font: { weight: 'bold' } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { color: '#6b7280' }, grid: { color: '#e5e7eb', strokeDash: [5, 5] } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#374151', font: { size: 14, weight: 'bold' } } }
+                    }
+                }
+            });
+        }
+
+        async function updateData() {
+            if (!systemActive) return;
+
+            // 1. 날짜 및 시간 업데이트
+            const now = new Date();
+            UI.date.innerText = now.toLocaleDateString();
+            UI.time.innerText = now.toLocaleTimeString();
+
+            let totalHarvest = 0;
+
+            // 2. 백엔드(Flask) 센서 데이터 연동 (app.py의 전역 저장소 호출)
+            try {
+                const res = await fetch('/api/data');
+                if (res.ok) {
+                    const data = await res.json();
+                    UI.temp.innerText = data.temp !== null ? data.temp : 'null';
+                    UI.humid.innerText = data.humid !== null ? data.humid : 'null';
+                UI.co2.innerText = data.co2 !== null && data.co2 !== undefined ? data.co2 : 'null';
+                UI.o2.innerText = data.o2 !== null && data.o2 !== undefined ? data.o2 : 'null';
+                UI.status.innerText = data.fsm_state !== null && data.fsm_state !== undefined ? data.fsm_state : 'null';
+                    totalHarvest = data.today_harvest;
+                    UI.harvest.innerText = totalHarvest !== null ? totalHarvest : 'null';
+                }
+            } catch (e) {
+                console.error("API Fetch Error:", e);
+            }
+
+            // 5. 차트 업데이트 (단일 날짜 A, B, Total 그룹화)
+            const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+            // 현재 백엔드의 today_harvest 값을 기반으로 A/B 구역 가상 분할
+            const harvestA = parseFloat((totalHarvest * 0.6).toFixed(2)); 
+            const harvestB = parseFloat((totalHarvest - harvestA).toFixed(2)); 
+            
+            harvestChart.data.labels = [dateStr];
+            harvestChart.data.datasets[0].data = [harvestA];
+            harvestChart.data.datasets[1].data = [harvestB];
+            harvestChart.data.datasets[2].data = [totalHarvest];
+            harvestChart.update();
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            if (!systemActive) {
+                systemActive = true;
+                appBody.classList.remove('border-8', 'border-red-500'); // 정지 시각적 경고 해제
+                
+                UI.camOverlay.innerText = "ROS2 Camera : Standby";
+                UI.camStream.style.display = "block";
+                
+                if (!dataInterval) dataInterval = setInterval(updateData, 1000);
+                updateData(); // 클릭 즉시 1회 렌더링 시작
+            }
+        });
+
+        document.getElementById('btn-stop').addEventListener('click', () => {
+            if(systemActive) {
+                systemActive = false; // 플래그를 false로 전환하여 화면 업데이트 즉시 정지
+                // 시각적 경고 (빨간색 테두리)
+                appBody.classList.add('border-8', 'border-red-500');
+                UI.status.innerText = "EMERGENCY STOP";
+                UI.status.classList.replace('text-emerald-700', 'text-red-600');
+            }
+        });
+
+        document.getElementById('btn-power-off').addEventListener('click', () => {
+            systemActive = false;
+            document.getElementById('power-off-overlay').classList.remove('hidden');
+            document.getElementById('power-off-overlay').classList.add('flex');
+        });
+
+        window.onload = () => {
+            initChart();
+        };
+    </script>
+</body>
+</html>
